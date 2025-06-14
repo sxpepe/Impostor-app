@@ -1,0 +1,75 @@
+import streamlit as st
+import random
+
+# Session-State initialisieren
+if "names" not in st.session_state:
+    st.session_state.names = []
+if "roles" not in st.session_state:
+    st.session_state.roles = []
+if "current_index" not in st.session_state:
+    st.session_state.current_index = 0
+if "phase" not in st.session_state:
+    st.session_state.phase = "setup"
+if "impostor_count" not in st.session_state:
+    st.session_state.impostor_count = 1
+
+st.title("🕵️‍♂️ Impostor-Rollen-Spiel")
+
+# SETUP-PHASE
+if st.session_state.phase == "setup":
+    st.subheader("Spieler hinzufügen")
+    name = st.text_input("Spielername", key="name_input")
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        if st.button("➕ Hinzufügen") and name.strip():
+            st.session_state.names.append(name.strip())
+            st.session_state.name_input = ""
+    with col2:
+        if st.button("🔄 Zurücksetzen"):
+            st.session_state.names = []
+            st.session_state.impostor_count = 1
+
+    st.markdown("**Spieler:**")
+    st.write(", ".join(st.session_state.names))
+
+    if len(st.session_state.names) >= 3:
+        max_impostors = len(st.session_state.names) - 1
+        st.session_state.impostor_count = st.slider("Anzahl Impostors", 1, max_impostors, st.session_state.impostor_count)
+        if st.button("🎲 Rollen zufällig zuweisen und starten"):
+            st.session_state.roles = ["CREWMATE"] * len(st.session_state.names)
+            impostors = random.sample(range(len(st.session_state.names)), st.session_state.impostor_count)
+            for i in impostors:
+                st.session_state.roles[i] = "IMPOSTOR"
+            st.session_state.phase = "reveal"
+            st.session_state.current_index = 0
+
+# ROLLEN-ANZEIGE-PHASE
+elif st.session_state.phase == "reveal":
+    player = st.session_state.names[st.session_state.current_index]
+    st.subheader(f"{player}, tipp zum Anzeigen deiner Rolle!")
+
+    if "revealed" not in st.session_state:
+        st.session_state.revealed = False
+
+    if not st.session_state.revealed:
+        if st.button("👆 Tippe hier um deine Rolle zu sehen"):
+            st.session_state.revealed = True
+    else:
+        role = st.session_state.roles[st.session_state.current_index]
+        if role == "IMPOSTOR":
+            st.error("❌ Du bist ein IMPOSTOR!")
+        else:
+            st.success("✅ Du bist ein Crewmate.")
+        if st.button("➡️ Weitergeben an Nächsten"):
+            st.session_state.revealed = False
+            st.session_state.current_index += 1
+            if st.session_state.current_index >= len(st.session_state.names):
+                st.session_state.phase = "done"
+
+# SPIEL-START
+elif st.session_state.phase == "done":
+    st.subheader("🎮 Alle Rollen wurden gezeigt!")
+    st.write("Jetzt könnt ihr diskutieren... Viel Spaß!")
+    if st.button("🔁 Neues Spiel"):
+        for key in st.session_state.keys():
+            del st.session_state[key]
